@@ -1,0 +1,5 @@
+{
+  "name": "Wedding Hall Booking Ledger",
+  "description": "A financial ledger for wedding hall bookings with admin and viewer roles, tracking transactions, discounts, and audit logs.",
+  "requestFramePermissions": []
+}

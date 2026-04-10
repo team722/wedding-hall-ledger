@@ -1,0 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  /* Breakpoint overrides for Tailwind v4 */
+  /* Using rem units is required in v4 to ensure proper sorting with defaults */
+  --breakpoint-sm: 40rem;      /* 640px */
+  --breakpoint-md: 61.9375rem; /* 991px (Mobile view stays active under 991px) */
+  --breakpoint-lg: 64rem;      /* 1024px */
+  --breakpoint-xl: 80rem;      /* 1280px */
+}

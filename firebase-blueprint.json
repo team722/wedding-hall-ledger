@@ -1,0 +1,73 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role-based access control.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email", "description": "User email" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "role": { "type": "string", "enum": ["admin", "viewer"], "description": "User role" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "A wedding hall booking entry.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique booking ID (Bill/Event Number)" },
+        "customerName": { "type": "string", "description": "Name of the customer" },
+        "mobileNumber": { "type": "string", "description": "Mobile number of the customer" },
+        "hallName": { "type": "string", "description": "Name of the hall booked" },
+        "fromDate": { "type": "string", "format": "date-time", "description": "Start date of the event" },
+        "toDate": { "type": "string", "format": "date-time", "description": "End date of the event" },
+        "totalAmount": { "type": "number", "description": "Total amount for the allotted days" },
+        "discountType": { "type": "string", "enum": ["percentage", "amount"], "description": "Type of discount" },
+        "discountValue": { "type": "number", "description": "Value of the discount" },
+        "netAmount": { "type": "number", "description": "Final amount after discount" },
+        "paidAmount": { "type": "number", "description": "Total amount paid so far" },
+        "returnableAmount": { "type": "number", "description": "Amount to be returned (security deposit etc.)" },
+        "status": { "type": "string", "enum": ["pending", "complete"], "description": "Payment status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Booking creation time" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update time" }
+      },
+      "required": ["customerName", "mobileNumber", "hallName", "fromDate", "toDate", "totalAmount", "netAmount", "status"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction against a booking.",
+      "type": "object",
+      "properties": {
+        "bookingId": { "type": "string", "description": "ID of the associated booking" },
+        "amount": { "type": "number", "description": "Transaction amount" },
+        "type": { "type": "string", "enum": ["advance", "installment", "return"], "description": "Type of transaction" },
+        "date": { "type": "string", "format": "date-time", "description": "Transaction date" },
+        "recordedBy": { "type": "string", "description": "UID of the admin who recorded it" }
+      },
+      "required": ["bookingId", "amount", "type", "date", "recordedBy"]
+    },
+    "AuditLog": {
+      "title": "Audit Log",
+      "description": "Log of changes made to bookings and transactions.",
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "description": "Action performed (create, update, delete)" },
+        "entityType": { "type": "string", "description": "Type of entity changed" },
+        "entityId": { "type": "string", "description": "ID of the entity changed" },
+        "changes": { "type": "object", "description": "Map of changed fields" },
+        "performedBy": { "type": "string", "description": "UID of the user who performed the action" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Time of the action" }
+      },
+      "required": ["action", "entityType", "performedBy", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/bookings/{bookingId}": { "schema": "Booking", "description": "Wedding hall bookings" },
+    "/bookings/{bookingId}/transactions/{transactionId}": { "schema": "Transaction", "description": "Transactions for a booking" },
+    "/auditLogs/{logId}": { "schema": "AuditLog", "description": "Audit logs for tracking changes" }
+  }
+}

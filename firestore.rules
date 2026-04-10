@@ -1,0 +1,154 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: users
+    // Fields: uid, email, displayName, role (admin/viewer), status (active/suspended/blocked), createdAt
+    //
+    // Collection: bookings
+    // Fields: customerName, mobileNumber, hallName, fromDate, toDate, totalAmount, discountType, discountValue, netAmount, paidAmount, returnableAmount, status, createdAt, updatedAt
+    //
+    // Collection: bookings/{bookingId}/transactions
+    // Fields: bookingId, amount, type (advance/installment/return), date, recordedBy
+    //
+    // Collection: auditLogs
+    // Fields: action, entityType, entityId, category (finance/activity), changes, performedBy, timestamp
+    //
+    // Collection: posts
+    // Fields: authorId, authorName, content, imageUrl, createdAt
+    //
+    // Collection: news
+    // Fields: title, content, authorId, createdAt
+    //
+    // Collection: documents
+    // Fields: title, url, category, createdAt
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        (request.auth.token.email == "sarath@zevenstone.com" && request.auth.token.email_verified == true) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    function isViewer() {
+      return true;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.uid is string &&
+             data.email is string &&
+             data.role in ['admin', 'viewer'] &&
+             (!('status' in data) || data.status in ['active', 'suspended', 'blocked']);
+    }
+
+    function isValidBooking(data) {
+      return data.keys().hasAll(['customerName', 'mobileNumber', 'hallName', 'fromDate', 'toDate', 'totalAmount', 'netAmount', 'status']) &&
+             data.customerName is string && data.customerName.size() > 0 && data.customerName.size() < 100 &&
+             data.mobileNumber is string && data.mobileNumber.size() >= 10 &&
+             data.totalAmount is number && data.totalAmount >= 0 &&
+             data.netAmount is number && data.netAmount >= 0 &&
+             data.status in ['pending', 'complete'];
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['bookingId', 'amount', 'type', 'date', 'recordedBy']) &&
+             data.amount is number &&
+             data.type in ['advance', 'installment', 'return'] &&
+             data.recordedBy == request.auth.uid;
+    }
+
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['action', 'entityType', 'entityId', 'category', 'performedBy', 'timestamp']) &&
+             data.category in ['finance', 'activity'] &&
+             data.performedBy == request.auth.uid;
+    }
+
+    function isValidPost(data) {
+      return data.keys().hasAll(['authorId', 'authorName', 'content', 'createdAt']) &&
+             data.authorId == request.auth.uid &&
+             data.authorName is string && data.authorName.size() > 0 &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 10000 &&
+             (!('imageUrl' in data) || data.imageUrl == null || (data.imageUrl is string && data.imageUrl.size() < 2000)) &&
+             (!('youtubeUrl' in data) || data.youtubeUrl == null || (data.youtubeUrl is string && data.youtubeUrl.size() < 2000));
+    }
+
+    function isValidNews(data) {
+      return data.keys().hasAll(['title', 'content', 'authorId', 'createdAt']) &&
+             data.authorId == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 50000 &&
+             (!('imageUrl' in data) || data.imageUrl == null || (data.imageUrl is string && data.imageUrl.size() < 2000)) &&
+             (!('youtubeUrl' in data) || data.youtubeUrl == null || (data.youtubeUrl is string && data.youtubeUrl.size() < 2000));
+    }
+
+    function isValidDocument(data) {
+      return data.keys().hasAll(['title', 'url', 'createdAt']) &&
+             data.title is string && data.title.size() > 0 &&
+             data.url is string && data.url.size() > 0;
+    }
+
+    // Rules
+    match /users/{uid} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == uid || 
+        isAdmin() || 
+        (resource != null && resource.data.email == request.auth.token.email)
+      );
+      allow create: if isAuthenticated() && (
+        (request.auth.uid == uid && isValidUser(request.resource.data)) || 
+        isAdmin()
+      );
+      allow update: if (isAdmin() || (isAuthenticated() && request.auth.uid == uid)) && isValidUser(request.resource.data);
+      allow delete: if isAdmin() || (isAuthenticated() && resource != null && resource.data.email == request.auth.token.email);
+    }
+
+    match /bookings/{bookingId} {
+      allow read: if isViewer();
+      allow create: if isAdmin() && isValidBooking(request.resource.data);
+      allow update: if isAdmin() && isValidBooking(request.resource.data);
+      allow delete: if isAdmin();
+
+      match /transactions/{transactionId} {
+        allow read: if isViewer();
+        allow create: if isAdmin() && isValidTransaction(request.resource.data);
+        allow update: if isAdmin() && isValidTransaction(request.resource.data);
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && isValidAuditLog(request.resource.data);
+    }
+
+    match /posts/{postId} {
+      allow read: if isViewer();
+      allow create: if isAdmin() && isValidPost(request.resource.data);
+      allow update: if isAdmin() && isValidPost(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /news/{newsId} {
+      allow read: if isViewer();
+      allow create: if isAdmin() && isValidNews(request.resource.data);
+      allow update: if isAdmin() && isValidNews(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /documents/{docId} {
+      allow read: if isViewer();
+      allow create: if isAdmin() && isValidDocument(request.resource.data);
+      allow update: if isAdmin() && isValidDocument(request.resource.data);
+      allow delete: if isAdmin();
+    }
+  }
+}
