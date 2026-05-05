@@ -22,7 +22,7 @@ export default function AdminDashboard() {
   const handleSeedAllData = async () => {
     if (!profile || !isAdmin) return;
     if (!window.confirm('This will add sample bookings, news, posts, and documents to your database. Continue?')) return;
-    
+
     setIsSeeding(true);
     try {
       // 1. Sample Bookings
@@ -250,7 +250,7 @@ export default function AdminDashboard() {
     return () => unsubscribe();
   }, []);
 
-  const filteredBookings = bookings.filter(b => 
+  const filteredBookings = bookings.filter(b =>
     b.customerName.toLowerCase().includes(search.toLowerCase()) ||
     b.mobileNumber.includes(search) ||
     b.id.includes(search)
@@ -267,7 +267,7 @@ export default function AdminDashboard() {
           <button
             onClick={handleSeedAllData}
             disabled={isSeeding}
-            className="flex items-center justify-center w-full sm:w-auto px-4 py-3 bg-stone-100 text-stone-600 rounded-xl font-medium hover:bg-stone-200 transition-all disabled:opacity-50"
+            className="hidden items-center justify-center w-full sm:w-auto px-4 py-3 bg-stone-100 text-stone-600 rounded-xl font-medium hover:bg-stone-200 transition-all disabled:opacity-50"
           >
             {isSeeding ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Database className="w-5 h-5 mr-2" />}
             Seed Sample Data
@@ -324,76 +324,75 @@ export default function AdminDashboard() {
       <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse min-w-[1000px]">
-          <thead>
-            <tr className="bg-stone-50 border-bottom border-stone-200">
-              <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Bill #</th>
-              <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Customer</th>
-              <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Hall / Dates</th>
-              <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Amount</th>
-              <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Paid</th>
-              <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Status</th>
-              <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-stone-100">
-            {filteredBookings.map((booking) => (
-              <tr key={booking.id} className="hover:bg-stone-50 transition-colors">
-                <td className="px-6 py-4 font-mono text-xs text-stone-500">{booking.id.slice(0, 8)}</td>
-                <td className="px-6 py-4">
-                  <p className="text-sm font-medium text-stone-900">{booking.customerName}</p>
-                  <p className="text-xs text-stone-500">{booking.mobileNumber}</p>
-                </td>
-                <td className="px-6 py-4">
-                  <p className="text-sm text-stone-900">{booking.hallName}</p>
-                  <p className="text-xs text-stone-500">
-                    {(() => {
-                      const from = safeParseDate(booking.fromDate);
-                      const to = safeParseDate(booking.toDate);
-                      return `${from ? format(from, 'MMM d') : 'N/A'} - ${to ? format(to, 'MMM d, yyyy') : 'N/A'}`;
-                    })()}
-                  </p>
-                </td>
-                <td className="px-6 py-4">
-                  <p className="text-sm font-medium text-stone-900">₹{booking.netAmount.toLocaleString()}</p>
-                  {booking.discountValue > 0 && (
-                    <p className="text-xs text-emerald-600">-{booking.discountType === 'percentage' ? `${booking.discountValue}%` : `₹${booking.discountValue}`}</p>
-                  )}
-                </td>
-                <td className="px-6 py-4">
-                  <p className="text-sm font-medium text-stone-900">₹{booking.paidAmount.toLocaleString()}</p>
-                  <p className="text-xs text-amber-600">Pending: ₹{(booking.netAmount - booking.paidAmount).toLocaleString()}</p>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-tighter ${
-                    booking.status === 'complete' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                  }`}>
-                    {booking.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => {
-                        setSelectedBooking(booking);
-                        setShowTransactionModal(true);
-                      }}
-                      className="p-2 text-stone-400 hover:text-stone-900 transition-colors"
-                      title="Add Payment"
-                    >
-                      <CreditCard className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => navigate(`/admin/edit/${booking.id}`)}
-                      className="p-2 text-stone-400 hover:text-stone-900 transition-colors"
-                      title="Edit Booking"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
+            <thead>
+              <tr className="bg-stone-50 border-bottom border-stone-200">
+                <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Bill #</th>
+                <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Customer</th>
+                <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Hall / Dates</th>
+                <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Amount</th>
+                <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Paid</th>
+                <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Status</th>
+                <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Actions</th>
               </tr>
-            ))}
-          </tbody>
+            </thead>
+            <tbody className="divide-y divide-stone-100">
+              {filteredBookings.map((booking) => (
+                <tr key={booking.id} className="hover:bg-stone-50 transition-colors">
+                  <td className="px-6 py-4 font-mono text-xs text-stone-500">{booking.id.slice(0, 8)}</td>
+                  <td className="px-6 py-4">
+                    <p className="text-sm font-medium text-stone-900">{booking.customerName}</p>
+                    <p className="text-xs text-stone-500">{booking.mobileNumber}</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <p className="text-sm text-stone-900">{booking.hallName}</p>
+                    <p className="text-xs text-stone-500">
+                      {(() => {
+                        const from = safeParseDate(booking.fromDate);
+                        const to = safeParseDate(booking.toDate);
+                        return `${from ? format(from, 'MMM d') : 'N/A'} - ${to ? format(to, 'MMM d, yyyy') : 'N/A'}`;
+                      })()}
+                    </p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <p className="text-sm font-medium text-stone-900">₹{booking.netAmount.toLocaleString()}</p>
+                    {booking.discountValue > 0 && (
+                      <p className="text-xs text-emerald-600">-{booking.discountType === 'percentage' ? `${booking.discountValue}%` : `₹${booking.discountValue}`}</p>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <p className="text-sm font-medium text-stone-900">₹{booking.paidAmount.toLocaleString()}</p>
+                    <p className="text-xs text-amber-600">Pending: ₹{(booking.netAmount - booking.paidAmount).toLocaleString()}</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-tighter ${booking.status === 'complete' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                      {booking.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => {
+                          setSelectedBooking(booking);
+                          setShowTransactionModal(true);
+                        }}
+                        className="p-2 text-stone-400 hover:text-stone-900 transition-colors"
+                        title="Add Payment"
+                      >
+                        <CreditCard className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => navigate(`/admin/edit/${booking.id}`)}
+                        className="p-2 text-stone-400 hover:text-stone-900 transition-colors"
+                        title="Edit Booking"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
           </table>
         </div>
       </div>

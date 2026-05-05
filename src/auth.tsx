@@ -21,6 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -104,13 +105,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async () => {
+    if (isLoggingIn) return;
+    setIsLoggingIn(true);
+
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
+    
     try {
+      // Use signInWithPopup but handle the specific localhost issue
       await signInWithPopup(auth, provider);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error during Google Sign-In:', error);
-      alert('Failed to sign in with Google. See console for details.');
+      
+      if (error.code === 'auth/internal-error' || error.message?.includes('Pending promise')) {
+        console.warn('Detected Firebase Auth internal error on localhost. This is often due to "localhost" not being in the Authorized Domains list in Firebase Console.');
+        alert('Authentication Error: Please ensure "localhost" is added to your Authorized Domains in the Firebase Console (Authentication > Settings).');
+      } else if (error.code !== 'auth/cancelled-popup-request' && error.code !== 'auth/popup-closed-by-user') {
+        alert(`Failed to sign in with Google: ${error.message}`);
+      }
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 

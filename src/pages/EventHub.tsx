@@ -133,9 +133,8 @@ export default function EventHub() {
       await uploadBytes(storageRef, file);
       return await getDownloadURL(storageRef);
     } catch (error: any) {
-      console.warn('Firebase Storage upload failed (likely due to quota/pricing plan). Using mock image URL for development.', error);
-      alert('Storage bucket is currently disabled. Using a mock image URL so you can continue testing the UI.');
-      return `https://picsum.photos/seed/${Date.now()}/800/600`;
+      console.error('Firebase Storage upload failed:', error);
+      throw new Error('Image upload failed. Please ensure you are logged in and rules are set.');
     }
   };
 
@@ -239,10 +238,10 @@ export default function EventHub() {
           finalUrl = await getDownloadURL(storageRef);
           fileName = docFile.name;
         } catch (error: any) {
-          console.warn('Firebase Storage upload failed (likely due to quota/pricing plan). Using mock PDF URL for development.', error);
-          alert('Storage bucket is currently disabled. Using a mock PDF URL so you can continue testing the UI.');
-          finalUrl = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
-          fileName = docFile.name;
+          console.error('Firebase Storage upload failed:', error);
+          alert('Document upload failed. Please try again.');
+          setIsUploading(false);
+          return;
         }
       }
 
@@ -424,7 +423,7 @@ export default function EventHub() {
             <button
               onClick={handleSeedData}
               disabled={isUploading}
-              className="flex items-center px-4 py-2 text-xs font-medium text-stone-600 hover:text-stone-900 transition-colors mr-2 shrink-0"
+              className="hidden items-center px-4 py-2 text-xs font-medium text-stone-600 hover:text-stone-900 transition-colors mr-2 shrink-0"
               title="Seed sample data for testing"
             >
               {isUploading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Plus className="w-3 h-3 mr-1" />}
