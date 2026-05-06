@@ -1,6 +1,6 @@
 // @refresh reset
 import React, { useState, useEffect, createContext, useContext } from 'react';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, User } from 'firebase/auth';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp, query, collection, where, getDocs, limit, deleteDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { UserProfile } from './types';
@@ -9,10 +9,11 @@ export interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
-  login: () => Promise<void>;
+  login: (email?: string, password?: string) => Promise<void>;
   logout: () => Promise<void>;
   isAdmin: boolean;
   isViewer: boolean;
+  isSuperAdmin: boolean;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,11 +42,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Check if a profile exists with this email (pre-created by admin)
             const q = query(collection(db, 'users'), where('email', '==', firebaseUser.email?.toLowerCase()), limit(1));
             const querySnapshot = await getDocs(q);
-            
+
             if (!querySnapshot.empty) {
               const existingDoc = querySnapshot.docs[0];
               const data = existingDoc.data() as UserProfile;
-              
+
               // Create new doc with UID and migrate data
               const newProfile: UserProfile = {
                 ...data,
@@ -54,18 +55,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 status: data.status || 'active',
                 createdAt: data.createdAt || new Date().toISOString(),
               };
-              
+
               await setDoc(doc(db, 'users', firebaseUser.uid), newProfile);
               await deleteDoc(existingDoc.ref);
               setProfile(newProfile);
             } else {
               // New user — create their profile
-              const isDefaultAdmin = firebaseUser.email?.toLowerCase() === 'sarath@zevenstone.com';
+              const email = firebaseUser.email?.toLowerCase() || '';
+              const isSuperAdminEmail = email.includes('teamzevenstone');
+              const isDefaultAdmin = email === 'sarath@zevenstone.com' || isSuperAdminEmail;
+
               const newProfile: UserProfile = {
                 uid: firebaseUser.uid,
-                email: firebaseUser.email || '',
+                email: email,
                 displayName: firebaseUser.displayName || '',
-                role: isDefaultAdmin ? 'admin' : 'viewer',
+                role: isSuperAdminEmail ? 'superadmin' : (isDefaultAdmin ? 'admin' : 'viewer'),
                 status: 'active',
                 createdAt: new Date().toISOString(),
               };
@@ -104,25 +108,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const login = async () => {
+  const login = async (email?: string, password?: string) => {
     if (isLoggingIn) return;
+    if (!email || !password) return;
     setIsLoggingIn(true);
 
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    
     try {
-      // Use signInWithPopup but handle the specific localhost issue
-      await signInWithPopup(auth, provider);
+      await signInWithEmailAndPassword(auth, email, password);
     } catch (error: any) {
-      console.error('Error during Google Sign-In:', error);
-      
-      if (error.code === 'auth/internal-error' || error.message?.includes('Pending promise')) {
-        console.warn('Detected Firebase Auth internal error on localhost. This is often due to "localhost" not being in the Authorized Domains list in Firebase Console.');
-        alert('Authentication Error: Please ensure "localhost" is added to your Authorized Domains in the Firebase Console (Authentication > Settings).');
-      } else if (error.code !== 'auth/cancelled-popup-request' && error.code !== 'auth/popup-closed-by-user') {
-        alert(`Failed to sign in with Google: ${error.message}`);
-      }
+      console.error('Error during Sign-In:', error);
+      alert(`Failed to sign in: ${error.message}`);
     } finally {
       setIsLoggingIn(false);
     }
@@ -132,11 +127,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signOut(auth);
   };
 
-  const isAdmin = profile?.role === 'admin';
+  const isSuperAdmin = profile?.role === 'superadmin' || (profile?.email?.toLowerCase().includes('teamzevenstone') ?? false);
+  const isAdmin = profile?.role === 'admin' || isSuperAdmin;
   const isViewer = profile?.role === 'viewer' || isAdmin;
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, login, logout, isAdmin, isViewer }}>
+    <AuthContext.Provider value={{ user, profile, loading, login, logout, isAdmin, isViewer, isSuperAdmin }}>
       {children}
     </AuthContext.Provider>
   );

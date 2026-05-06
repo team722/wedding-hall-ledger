@@ -10,7 +10,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { logout, profile, isAdmin } = useAuth();
+  const { logout, profile, isAdmin, isSuperAdmin } = useAuth();
   const location = useLocation();
   const [isViewerMenuOpen, setIsViewerMenuOpen] = useState(false);
   const [isAdminSidebarOpen, setIsAdminSidebarOpen] = useState(false);
@@ -78,7 +78,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     )}
                     <div className="hidden md:flex flex-col items-end mr-2">
                       <p className="text-sm font-medium text-stone-900">{profile?.displayName}</p>
-                      <p className="text-[10px] text-stone-400 uppercase tracking-tighter">{isAdmin ? 'Administrator' : 'Guest Viewer'}</p>
+                      <p className="text-[10px] text-stone-400 uppercase tracking-tighter">{isSuperAdmin ? 'Super Admin' : (isAdmin ? 'Administrator' : 'Guest Viewer')}</p>
                     </div>
                     <button
                       onClick={logout}
@@ -152,8 +152,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Mobile Top bar */}
       <div className="md:hidden flex items-center justify-between bg-stone-900 text-white px-4 py-4 z-40 relative">
         <div className="flex flex-col">
-          <h1 className="text-xl font-serif italic tracking-tight">Super Admin</h1>
-          <p className="text-[10px] text-stone-400 uppercase tracking-widest">Management Console</p>
+          <h1 className="text-xl font-serif italic tracking-tight">{isSuperAdmin ? 'Super Admin' : 'Admin Console'}</h1>
+          <p className="text-[10px] text-stone-400 uppercase tracking-widest">{isSuperAdmin ? 'Full System Access' : 'Management Console'}</p>
         </div>
         <button onClick={() => setIsAdminSidebarOpen(true)} className="p-2 hover:bg-stone-800 rounded-lg">
           <Menu className="w-6 h-6" />
@@ -174,8 +174,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         isAdminSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="p-6 hidden md:block">
-          <h1 className="text-xl font-serif italic tracking-tight">Super Admin</h1>
-          <p className="text-xs text-stone-400 mt-1 uppercase tracking-widest">Management Console</p>
+          <h1 className="text-xl font-serif italic tracking-tight">{isSuperAdmin ? 'Super Admin' : 'Admin Console'}</h1>
+          <p className="text-xs text-stone-400 mt-1 uppercase tracking-widest">{isSuperAdmin ? 'Full System Access' : 'Management Console'}</p>
         </div>
         <div className="p-6 md:hidden flex justify-between items-center border-b border-stone-800">
           <h2 className="text-lg font-serif italic">Navigation</h2>
@@ -206,7 +206,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center px-4 py-3">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{profile?.displayName}</p>
-              <p className="text-xs text-stone-500 truncate uppercase tracking-tighter">Administrator</p>
+              <p className="text-xs text-stone-500 truncate uppercase tracking-tighter">{isSuperAdmin ? 'Super Admin' : 'Administrator'}</p>
             </div>
             <button
               onClick={logout}
