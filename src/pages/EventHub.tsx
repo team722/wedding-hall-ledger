@@ -12,6 +12,7 @@ import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import ReactPlayer from 'react-player';
 import DOMPurify from 'dompurify';
+import ImageWithShimmer from '../components/ImageWithShimmer';
 
 const Player = ReactPlayer as any;
 
@@ -476,7 +477,7 @@ export default function EventHub() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div className="relative">
+                  <div className="relative hidden">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <Youtube className="h-4 w-4 text-stone-400" />
                     </div>
@@ -591,7 +592,7 @@ export default function EventHub() {
 
                   {post.imageUrl && (
                     <div className="mb-4 rounded-xl overflow-hidden border border-stone-200">
-                      <img src={post.imageUrl} alt="Post content" className="w-full h-auto max-h-[300px] object-cover" referrerPolicy="no-referrer" />
+                      <ImageWithShimmer src={post.imageUrl} alt="Post content" className="w-full h-auto max-h-[300px] object-cover" minHeightClass="min-h-[250px]" referrerPolicy="no-referrer" />
                     </div>
                   )}
 
@@ -648,7 +649,7 @@ export default function EventHub() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-12">
-                  <div className="relative">
+                  <div className="relative hidden">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <Youtube className="h-4 w-4 text-stone-400" />
                     </div>
@@ -719,7 +720,7 @@ export default function EventHub() {
               {news.map((item) => (
                 <div key={item.id} className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden group">
                   {(item as any).imageUrl && (
-                    <img src={(item as any).imageUrl} alt={item.title} className="w-full h-40 object-cover border-b border-stone-200" referrerPolicy="no-referrer" />
+                    <ImageWithShimmer src={(item as any).imageUrl} alt={item.title} className="w-full h-40 object-cover border-b border-stone-200" minHeightClass="min-h-[160px]" referrerPolicy="no-referrer" />
                   )}
                   <div className="p-6">
                     <div className="flex justify-between items-start mb-2">

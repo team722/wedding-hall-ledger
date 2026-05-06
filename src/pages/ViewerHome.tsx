@@ -60,7 +60,7 @@ export default function ViewerHome() {
       )}
       <section className="relative h-[450px] md:h-[400px] rounded-3xl overflow-hidden shadow-2xl">
         <img
-          src="https://devendrarmaaligai.com/wp-content/uploads/2026/03/image-fill-e1773324774794.png"
+          src="https://devendrarmaaligai.com/wp-content/uploads/2026/05/The-Hall-scaled.webp"
           alt="Wedding Hall"
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"

@@ -13,3 +13,12 @@
   --breakpoint-lg: 64rem;      /* 1024px */
   --breakpoint-xl: 80rem;      /* 1280px */
 }
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s infinite linear;
+}
