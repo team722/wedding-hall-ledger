@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoggingIn(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, email.toLowerCase().trim(), password);
     } catch (error: any) {
       console.error('Error during Sign-In:', error);
       alert(`Failed to sign in: ${error.message}`);

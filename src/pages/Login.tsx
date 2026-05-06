@@ -24,7 +24,7 @@ export default function Login({ defaultPortal }: { defaultPortal?: 'admin' | 'vi
     e.preventDefault();
     if (!email || !password) return;
     setIsSubmitting(true);
-    await login(email, password);
+    await login(email.toLowerCase().trim(), password);
     setIsSubmitting(false);
   };
 
