@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from '../firebase';
 import { useAuth } from '../auth';
 import { Post, News, Document as DocType } from '../types';
-import { MessageSquare, Newspaper, FileText, Send, Trash2, Plus, ExternalLink, Image as ImageIcon, Youtube, X, Loader2, CloudCog, Eye } from 'lucide-react';
+import { MessageSquare, Newspaper, FileText, Send, Trash2, Plus, ExternalLink, Image as ImageIcon, Youtube, X, Loader2, CloudCog, Eye, Edit2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { safeParseDate } from '../lib/dateUtils';
 import ReactQuill from 'react-quill-new';
@@ -83,6 +83,22 @@ export default function EventHub() {
 
   // Delete Confirmation State
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; collectionName: string; id: string } | null>(null);
+
+  // Edit states
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [editingNews, setEditingNews] = useState<News | null>(null);
+  const [editingDoc, setEditingDoc] = useState<DocType | null>(null);
+  
+  const [editForm, setEditForm] = useState({
+    title: '',
+    content: '',
+    youtubeUrl: '',
+    url: '',
+    category: ''
+  });
+  const [editImage, setEditImage] = useState<File | null>(null);
+  const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
 
   console.log(docForm, "docFile", docFileInputRef, docFile);
 
@@ -301,6 +317,180 @@ export default function EventHub() {
       }
     } catch (error) {
       console.error('Error deleting:', error);
+    }
+  };
+
+  const startEditingPost = (post: Post) => {
+    setEditingPost(post);
+    setEditForm({
+      title: '',
+      content: post.content,
+      youtubeUrl: post.youtubeUrl || '',
+      url: '',
+      category: ''
+    });
+    setEditImagePreview(post.imageUrl || null);
+    setEditImage(null);
+  };
+
+  const startEditingNews = (n: News) => {
+    setEditingNews(n);
+    setEditForm({
+      title: n.title,
+      content: n.content,
+      youtubeUrl: n.youtubeUrl || '',
+      url: '',
+      category: ''
+    });
+    setEditImagePreview(n.imageUrl || null);
+    setEditImage(null);
+  };
+
+  const startEditingDoc = (d: DocType) => {
+    setEditingDoc(d);
+    setEditForm({
+      title: d.title,
+      content: '',
+      youtubeUrl: '',
+      url: d.url,
+      category: d.category || ''
+    });
+    setEditImage(null);
+    setEditImagePreview(null);
+  };
+
+  const handleUpdatePost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPost || !editForm.content.trim() || !profile) return;
+
+    setIsUploading(true);
+    try {
+      let imageUrl = editingPost.imageUrl || '';
+      if (editImage) {
+        imageUrl = await uploadImage(editImage);
+      } else if (editImagePreview === null) {
+        imageUrl = '';
+      }
+
+      const updates = {
+        content: editForm.content,
+        imageUrl: imageUrl || null,
+        youtubeUrl: editForm.youtubeUrl || null,
+        updatedAt: new Date().toISOString(),
+      };
+
+      await updateDoc(doc(db, 'posts', editingPost.id), updates);
+
+      // Audit Log
+      await addDoc(collection(db, 'auditLogs'), {
+        action: 'update',
+        entityType: 'post',
+        entityId: editingPost.id,
+        category: 'activity',
+        changes: updates,
+        performedBy: profile.uid,
+        timestamp: serverTimestamp(),
+      });
+
+      setEditingPost(null);
+    } catch (error) {
+      console.error('Error updating post:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleUpdateNews = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingNews || !editForm.title.trim() || !editForm.content.trim() || !profile) return;
+
+    setIsUploading(true);
+    try {
+      let imageUrl = editingNews.imageUrl || '';
+      if (editImage) {
+        imageUrl = await uploadImage(editImage);
+      } else if (editImagePreview === null) {
+        imageUrl = '';
+      }
+
+      const updates = {
+        title: editForm.title,
+        content: editForm.content,
+        imageUrl: imageUrl || null,
+        youtubeUrl: editForm.youtubeUrl || null,
+        updatedAt: new Date().toISOString(),
+      };
+
+      await updateDoc(doc(db, 'news', editingNews.id), updates);
+
+      // Audit Log
+      await addDoc(collection(db, 'auditLogs'), {
+        action: 'update',
+        entityType: 'news',
+        entityId: editingNews.id,
+        category: 'activity',
+        changes: updates,
+        performedBy: profile.uid,
+        timestamp: serverTimestamp(),
+      });
+
+      setEditingNews(null);
+    } catch (error) {
+      console.error('Error updating news:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleUpdateDoc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDoc || !editForm.title.trim() || !profile) return;
+
+    setIsUploading(true);
+    try {
+      let finalUrl = editForm.url;
+      let fileName = editingDoc.fileName || '';
+
+      if (editImage) { // Re-using editImage as a generic file state
+        try {
+          const storageRef = ref(storage, `documents/${Date.now()}_${editImage.name}`);
+          await uploadBytes(storageRef, editImage);
+          finalUrl = await getDownloadURL(storageRef);
+          fileName = editImage.name;
+        } catch (error: any) {
+          console.error('Firebase Storage upload failed:', error);
+          alert('Document upload failed.');
+          setIsUploading(false);
+          return;
+        }
+      }
+
+      const updates = {
+        title: editForm.title,
+        url: finalUrl,
+        fileName: fileName || null,
+        category: editForm.category,
+        updatedAt: new Date().toISOString(),
+      };
+
+      await updateDoc(doc(db, 'documents', editingDoc.id), updates);
+
+      // Audit Log
+      await addDoc(collection(db, 'auditLogs'), {
+        action: 'update',
+        entityType: 'document',
+        entityId: editingDoc.id,
+        category: 'activity',
+        changes: updates,
+        performedBy: profile.uid,
+        timestamp: serverTimestamp(),
+      });
+
+      setEditingDoc(null);
+    } catch (error) {
+      console.error('Error updating document:', error);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -579,12 +769,22 @@ export default function EventHub() {
                       </div>
                     </div>
                     {canEdit && (
-                      <button
-                        onClick={() => handleDelete('posts', post.id)}
-                        className="p-2 text-stone-400 hover:text-red-600 transition-colors opacity-100 sm:opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => startEditingPost(post)}
+                          className="p-2 text-stone-400 hover:text-blue-600 transition-colors"
+                          title="Edit Post"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete('posts', post.id)}
+                          className="p-2 text-stone-400 hover:text-red-600 transition-colors"
+                          title="Delete Post"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -731,12 +931,22 @@ export default function EventHub() {
                         })()}
                       </span>
                       {canEdit && (
-                        <button
-                          onClick={() => handleDelete('news', item.id)}
-                          className="p-1 text-stone-400 hover:text-red-600 transition-colors opacity-100 sm:opacity-0 group-hover:opacity-100"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => startEditingNews(item)}
+                            className="p-1 text-stone-400 hover:text-blue-600 transition-colors"
+                            title="Edit Announcement"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete('news', item.id)}
+                            className="p-1 text-stone-400 hover:text-red-600 transition-colors"
+                            title="Delete Announcement"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       )}
                     </div>
                     <h3 className="text-2xl font-serif italic text-stone-900 mb-4">{item.title}</h3>
@@ -872,12 +1082,22 @@ export default function EventHub() {
                       <Eye className="w-4 h-4" />
                     </button>
                     {canEdit && (
-                      <button
-                        onClick={() => handleDelete('documents', doc.id)}
-                        className="p-2 text-stone-400 hover:text-red-600 transition-colors opacity-100 sm:opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => startEditingDoc(doc)}
+                          className="p-2 text-stone-400 hover:text-blue-600 transition-colors"
+                          title="Edit Document"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete('documents', doc.id)}
+                          className="p-2 text-stone-400 hover:text-red-600 transition-colors"
+                          title="Delete Document"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -968,6 +1188,224 @@ export default function EventHub() {
                 }
               })()}
             </div>
+          </div>
+        </div>
+      )}
+
+
+
+      {/* Edit Post Modal */}
+      {editingPost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between">
+              <h3 className="text-xl font-serif italic text-stone-900">Edit Post</h3>
+              <button onClick={() => setEditingPost(null)} className="p-2 text-stone-400 hover:text-stone-900">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdatePost} className="p-6 overflow-y-auto space-y-4">
+              <ReactQuill
+                theme="snow"
+                value={editForm.content}
+                onChange={(val) => setEditForm({ ...editForm, content: val })}
+                modules={quillModules}
+                formats={quillFormats}
+                className="bg-stone-50 rounded-lg overflow-hidden [&_.ql-editor]:min-h-[200px]"
+              />
+              
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => editFileInputRef.current?.click()}
+                  className="flex items-center px-4 py-2 text-sm font-medium text-stone-600 bg-stone-100 rounded-lg hover:bg-stone-200"
+                >
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  {editImage || editImagePreview ? 'Change Image' : 'Add Image'}
+                </button>
+                <input
+                  type="file"
+                  ref={editFileInputRef}
+                  onChange={(e) => handleImageChange(e, setEditImage, setEditImagePreview)}
+                  className="hidden"
+                  accept="image/*"
+                />
+                {(editImage || editImagePreview) && (
+                  <button
+                    type="button"
+                    onClick={() => { setEditImage(null); setEditImagePreview(null); }}
+                    className="text-xs text-red-600 hover:underline"
+                  >
+                    Remove Image
+                  </button>
+                )}
+              </div>
+
+              {editImagePreview && (
+                <img src={editImagePreview} alt="Preview" className="h-32 rounded-lg border" />
+              )}
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button type="button" onClick={() => setEditingPost(null)} className="px-4 py-2 text-stone-600">Cancel</button>
+                <button
+                  type="submit"
+                  disabled={isUploading}
+                  className="px-6 py-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 flex items-center"
+                >
+                  {isUploading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit News Modal */}
+      {editingNews && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between">
+              <h3 className="text-xl font-serif italic text-stone-900">Edit Announcement</h3>
+              <button onClick={() => setEditingNews(null)} className="p-2 text-stone-400 hover:text-stone-900">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateNews} className="p-6 overflow-y-auto space-y-4">
+              <input
+                type="text"
+                placeholder="Title"
+                value={editForm.title}
+                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                className="w-full p-3 bg-stone-50 border border-stone-200 rounded-lg focus:ring-2 focus:ring-stone-900"
+                required
+              />
+              <div className="bg-stone-50 rounded-lg overflow-hidden border border-stone-200">
+                <ReactQuill
+                  theme="snow"
+                  value={editForm.content}
+                  onChange={(val) => setEditForm({ ...editForm, content: val })}
+                  modules={quillModules}
+                  formats={quillFormats}
+                  className="[&_.ql-editor]:min-h-[250px]"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => editFileInputRef.current?.click()}
+                  className="flex items-center px-4 py-2 text-sm font-medium text-stone-600 bg-stone-100 rounded-lg hover:bg-stone-200"
+                >
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  {editImage || editImagePreview ? 'Change Image' : 'Add Image'}
+                </button>
+                <input
+                  type="file"
+                  ref={editFileInputRef}
+                  onChange={(e) => handleImageChange(e, setEditImage, setEditImagePreview)}
+                  className="hidden"
+                  accept="image/*"
+                />
+                {(editImage || editImagePreview) && (
+                  <button
+                    type="button"
+                    onClick={() => { setEditImage(null); setEditImagePreview(null); }}
+                    className="text-xs text-red-600 hover:underline"
+                  >
+                    Remove Image
+                  </button>
+                )}
+              </div>
+
+              {editImagePreview && (
+                <img src={editImagePreview} alt="Preview" className="h-32 rounded-lg border" />
+              )}
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button type="button" onClick={() => setEditingNews(null)} className="px-4 py-2 text-stone-600">Cancel</button>
+                <button
+                  type="submit"
+                  disabled={isUploading}
+                  className="px-6 py-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 flex items-center"
+                >
+                  {isUploading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Document Modal */}
+      {editingDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden border border-stone-200">
+            <div className="p-6 border-b border-stone-100 flex items-center justify-between">
+              <h3 className="text-xl font-serif italic text-stone-900">Edit Document</h3>
+              <button onClick={() => setEditingDoc(null)} className="text-stone-400 hover:text-stone-900">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateDoc} className="p-6 space-y-4">
+              <input
+                type="text"
+                placeholder="Document Title"
+                value={editForm.title}
+                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                className="w-full p-3 bg-stone-50 border border-stone-200 rounded-lg focus:ring-2 focus:ring-stone-900"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Category"
+                value={editForm.category}
+                onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                className="w-full p-3 bg-stone-50 border border-stone-200 rounded-lg focus:ring-2 focus:ring-stone-900"
+              />
+              
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Update Source</label>
+                <input
+                  type="url"
+                  placeholder="External URL"
+                  value={editForm.url}
+                  onChange={(e) => setEditForm({ ...editForm, url: e.target.value })}
+                  className="w-full p-3 bg-stone-50 border border-stone-200 rounded-lg focus:ring-2 focus:ring-stone-900"
+                  disabled={!!editImage}
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => editFileInputRef.current?.click()}
+                    className="flex items-center px-4 py-2 text-sm font-medium text-stone-600 bg-stone-100 rounded-lg hover:bg-stone-200"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    {editImage ? 'Change File' : 'Upload New File'}
+                  </button>
+                  <input
+                    type="file"
+                    ref={editFileInputRef}
+                    onChange={(e) => setEditImage(e.target.files?.[0] || null)}
+                    className="hidden"
+                  />
+                  {editImage && <span className="text-xs text-stone-500 truncate max-w-[150px]">{editImage.name}</span>}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button type="button" onClick={() => setEditingDoc(null)} className="px-4 py-2 text-stone-600">Cancel</button>
+                <button
+                  type="submit"
+                  disabled={isUploading}
+                  className="px-6 py-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 flex items-center"
+                >
+                  {isUploading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Save Changes
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
