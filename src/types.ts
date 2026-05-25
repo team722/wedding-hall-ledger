@@ -9,6 +9,7 @@ export interface UserProfile {
   role: UserRole;
   status?: UserStatus;
   createdAt: string;
+  createdBy?: string;
 }
 
 export type DiscountType = 'percentage' | 'amount';

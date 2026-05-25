@@ -51,6 +51,19 @@ export default function MemberManagement() {
       return;
     }
     const { userId, newStatus } = statusConfirm;
+    
+    const targetUser = members.find(m => m.uid === userId);
+    if (!targetUser) return;
+    const canManage = targetUser.uid !== adminProfile?.uid && 
+                      (isSuperAdmin || targetUser.role === 'viewer' || (targetUser.role === 'admin' && targetUser.createdBy === adminProfile?.uid)) && 
+                      targetUser.role !== 'superadmin' && 
+                      !targetUser.email.toLowerCase().includes('teamzevenstone');
+    if (!canManage) {
+      alert("Unauthorized: You do not have permission to manage this user.");
+      setStatusConfirm(null);
+      return;
+    }
+
     setStatusConfirm(null);
 
     try {
@@ -85,6 +98,19 @@ export default function MemberManagement() {
       return;
     }
     const { userId } = deleteConfirm;
+
+    const targetUser = members.find(m => m.uid === userId);
+    if (!targetUser) return;
+    const canManage = targetUser.uid !== adminProfile?.uid && 
+                      (isSuperAdmin || targetUser.role === 'viewer' || (targetUser.role === 'admin' && targetUser.createdBy === adminProfile?.uid)) && 
+                      targetUser.role !== 'superadmin' && 
+                      !targetUser.email.toLowerCase().includes('teamzevenstone');
+    if (!canManage) {
+      alert("Unauthorized: You do not have permission to delete this user.");
+      setDeleteConfirm(null);
+      return;
+    }
+
     setDeleteConfirm(null);
 
     try {
@@ -124,7 +150,7 @@ export default function MemberManagement() {
 
       await deleteApp(secondaryApp);
 
-      const roleToSet = isSuperAdmin ? newUser.role : 'viewer';
+      const roleToSet = newUser.role === 'superadmin' ? 'viewer' : newUser.role;
 
       await setDoc(doc(db, 'users', newUid), {
         uid: newUid,
@@ -133,6 +159,7 @@ export default function MemberManagement() {
         role: roleToSet,
         status: 'active',
         createdAt: new Date().toISOString(),
+        createdBy: adminProfile?.uid || 'system',
       });
 
       // Audit Log
@@ -164,6 +191,17 @@ export default function MemberManagement() {
       return;
     }
 
+    const canManage = editUser.uid !== adminProfile?.uid && 
+                      (isSuperAdmin || editUser.role === 'viewer' || (editUser.role === 'admin' && editUser.createdBy === adminProfile?.uid)) && 
+                      editUser.role !== 'superadmin' && 
+                      !editUser.email.toLowerCase().includes('teamzevenstone');
+    if (!canManage) {
+      alert("Unauthorized: You do not have permission to edit this user.");
+      setShowEditModal(false);
+      setEditUser(null);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const updates: any = {
@@ -171,8 +209,8 @@ export default function MemberManagement() {
         updatedAt: new Date().toISOString()
       };
 
-      if (isSuperAdmin) {
-        updates.role = editUser.role;
+      if (isAdmin) {
+        updates.role = editUser.role === 'superadmin' ? 'viewer' : editUser.role;
       }
 
       await updateDoc(doc(db, 'users', editUser.uid), updates);
@@ -297,17 +335,13 @@ export default function MemberManagement() {
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-stone-500 mb-1">Role</label>
                 <select
-                  disabled={!isSuperAdmin}
-                  className={`w-full px-4 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-stone-900/10 focus:outline-none ${!isSuperAdmin ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-stone-50'}`}
+                  className="w-full px-4 py-2 border border-stone-200 bg-stone-50 rounded-lg focus:ring-2 focus:ring-stone-900/10 focus:outline-none text-stone-900"
                   value={newUser.role}
                   onChange={(e) => setNewUser({ ...newUser, role: e.target.value as UserRole })}
-                  title={!isSuperAdmin ? "Only Super Admins can assign roles" : ""}
                 >
                   <option value="viewer">Viewer (Read-only access)</option>
                   <option value="admin">Admin (Full management access)</option>
-                  {isSuperAdmin && <option value="superadmin">Super Admin (Full control)</option>}
                 </select>
-                {!isSuperAdmin && <p className="text-[10px] text-stone-400 mt-1 italic">Only Super Admins can assign management roles.</p>}
               </div>
 
               <div className="pt-4 flex gap-3">
@@ -377,7 +411,7 @@ export default function MemberManagement() {
               </div>
             </div>
 
-            {member.uid !== adminProfile?.uid && (isSuperAdmin || member.role === 'viewer') && member.role !== 'superadmin' && !member.email.toLowerCase().includes('teamzevenstone') && (
+            {member.uid !== adminProfile?.uid && (isSuperAdmin || member.role === 'viewer' || (member.role === 'admin' && member.createdBy === adminProfile?.uid)) && member.role !== 'superadmin' && !member.email.toLowerCase().includes('teamzevenstone') && (
               <div className="flex items-center gap-2 pt-4 border-t border-stone-100">
                 <button
                   onClick={() => initiateEditUser(member)}
@@ -466,17 +500,13 @@ export default function MemberManagement() {
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-stone-500 mb-1">Role</label>
                 <select
-                  disabled={!isSuperAdmin}
-                  className={`w-full px-4 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-stone-900/10 focus:outline-none ${!isSuperAdmin ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-stone-50'}`}
+                  className="w-full px-4 py-2 border border-stone-200 bg-stone-50 rounded-lg focus:ring-2 focus:ring-stone-900/10 focus:outline-none text-stone-900"
                   value={editUser.role}
                   onChange={(e) => setEditUser({ ...editUser, role: e.target.value as UserRole })}
-                  title={!isSuperAdmin ? "Only Super Admins can modify roles" : ""}
                 >
                   <option value="viewer">Viewer (Read-only access)</option>
                   <option value="admin">Admin (Full management access)</option>
-                  {isSuperAdmin && <option value="superadmin">Super Admin (Full control)</option>}
                 </select>
-                {!isSuperAdmin && <p className="text-[10px] text-stone-400 mt-1 italic">Only Super Admins can modify account roles.</p>}
               </div>
 
               <div className="pt-4 flex gap-3">
