@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "wedding-hall-ledger",
     "public": "dist",
     "ignore": [
       "firebase.json",
