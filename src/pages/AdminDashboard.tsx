@@ -327,7 +327,7 @@ export default function AdminDashboard() {
             <thead>
               <tr className="bg-stone-50 border-bottom border-stone-200">
                 <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Bill #</th>
-                <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Customer</th>
+                <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Customers</th>
                 <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Hall / Dates</th>
                 <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Amount</th>
                 <th className="px-6 py-4 text-xs font-serif italic text-stone-500 uppercase tracking-widest">Paid</th>
